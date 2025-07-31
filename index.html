@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bola Aventurera</title>
+  <style>
+    body {
+      margin: 0;
+      background: #cce7ff;
+      overflow: hidden;
+      touch-action: none;
+      font-family: sans-serif;
+    }
+    canvas {
+      display: block;
+    }
+    #score {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      color: #000;
+      font-size: 24px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <div id="score">Puntos: 0</div>
+  <canvas id="gameCanvas"></canvas>
+  <audio id="collectSound" src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_a8765f38cb.mp3?filename=collect-coin-4-19938.mp3"></audio>
+  <audio id="hitSound" src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_f13e7c9aa6.mp3?filename=negative_beeps-6008.mp3"></audio>
+  <script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    let player = {
+      x: canvas.width / 2,
+      y: canvas.height - 60,
+      radius: 25,
+      color: "#ff5722"
+    };
+
+    let obstacles = [];
+    let stars = [];
+    let score = 0;
+    let gameOver = false;
+
+    const collectSound = document.getElementById("collectSound");
+    const hitSound = document.getElementById("hitSound");
+
+    function drawPlayer() {
+      ctx.beginPath();
+      ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
+      ctx.fillStyle = player.color;
+      ctx.fill();
+      ctx.closePath();
+    }
+
+    function drawObstacle(ob) {
+      ctx.fillStyle = "#000";
+      ctx.fillRect(ob.x, ob.y, ob.width, ob.height);
+    }
+
+    function drawStar(st) {
+      ctx.beginPath();
+      ctx.arc(st.x, st.y, st.radius, 0, Math.PI * 2);
+      ctx.fillStyle = "yellow";
+      ctx.fill();
+      ctx.closePath();
+    }
+
+    function spawnObstacle() {
+      let width = 60;
+      let height = 20;
+      let x = Math.random() * (canvas.width - width);
+      let y = -height;
+      obstacles.push({ x, y, width, height, speed: 3 });
+    }
+
+    function spawnStar() {
+      let x = Math.random() * (canvas.width - 20) + 10;
+      let y = -20;
+      stars.push({ x, y, radius: 10, speed: 2 });
+    }
+
+    function update() {
+      if (gameOver) return;
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawPlayer();
+
+      obstacles.forEach((ob, i) => {
+        ob.y += ob.speed;
+        drawObstacle(ob);
+
+        if (
+          player.x + player.radius > ob.x &&
+          player.x - player.radius < ob.x + ob.width &&
+          player.y + player.radius > ob.y &&
+          player.y - player.radius < ob.y + ob.height
+        ) {
+          hitSound.play();
+          alert("¡Ups! Juego terminado. Puntos: " + score);
+          location.reload();
+          gameOver = true;
+        }
+      });
+
+      stars.forEach((st, i) => {
+        st.y += st.speed;
+        drawStar(st);
+
+        let dx = player.x - st.x;
+        let dy = player.y - st.y;
+        let distance = Math.sqrt(dx * dx + dy * dy);
+
+        if (distance < player.radius + st.radius) {
+          score++;
+          document.getElementById("score").innerText = "Puntos: " + score;
+          collectSound.play();
+          stars.splice(i, 1);
+        }
+      });
+
+      requestAnimationFrame(update);
+    }
+
+    setInterval(spawnObstacle, 1500);
+    setInterval(spawnStar, 2000);
+    update();
+
+    // Control táctil
+    canvas.addEventListener("touchmove", (e) => {
+      let touch = e.touches[0];
+      player.x = touch.clientX;
+      player.y = touch.clientY;
+    });
+  </script>
+</body>
+</html>
