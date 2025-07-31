@@ -1,143 +1,471 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Bola Aventurera</title>
-  <style>
-    body {
-      margin: 0;
-      background: #cce7ff;
-      overflow: hidden;
-      touch-action: none;
-      font-family: sans-serif;
-    }
-    canvas {
-      display: block;
-    }
-    #score {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      color: #000;
-      font-size: 24px;
-      font-weight: bold;
-    }
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Juego Bola con Poderes</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: sans-serif;
+    background: #f0f0f0;
+    overflow: hidden;
+  }
+  #pantallaInicio, #pantallaJuego, #pantallaFinal {
+    position: absolute;
+    width: 100vw; height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+  #pantallaJuego, #pantallaFinal { display: none; }
+  #seleccionBola {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin: 20px 0;
+    gap: 20px;
+  }
+  .opcionBola {
+    text-align: center;
+    cursor: pointer;
+    border: 2px solid #444;
+    border-radius: 50%;
+    padding: 10px;
+    transition: transform 0.2s ease;
+    width: 100px;
+  }
+  .opcionBola:hover {
+    transform: scale(1.1);
+    border-color: #f97316;
+  }
+  .opcionBola.selected {
+    border-color: #1e40af;
+    box-shadow: 0 0 10px #1e40af;
+  }
+  .opcionBola img {
+    width: 60px; height: 60px;
+    display: block;
+    margin: 0 auto 8px;
+    border-radius: 50%;
+    object-fit: contain;
+    background: white;
+  }
+  #juegoCanvas {
+    background: #fff;
+    border: 2px solid #333;
+    touch-action: none;
+  }
+  #infoJuego {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background: rgba(255,255,255,0.8);
+    padding: 5px 10px;
+    border-radius: 8px;
+    font-size: 1rem;
+    z-index: 10;
+  }
+  #btnReiniciarJuego {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    padding: 8px 15px;
+    font-size: 1rem;
+    cursor: pointer;
+    border-radius: 6px;
+    border: none;
+    background: #f97316;
+    color: white;
+    z-index: 10;
+  }
+  #btnReiniciarJuego:hover {
+    background: #1e40af;
+  }
+  button {
+    padding: 10px 20px;
+    font-size: 1rem;
+    margin-top: 20px;
+    cursor: pointer;
+    border-radius: 6px;
+    border: none;
+    background: #f97316;
+    color: white;
+  }
+  button:hover {
+    background: #1e40af;
+  }
+</style>
 </head>
 <body>
-  <div id="score">Puntos: 0</div>
-  <canvas id="gameCanvas"></canvas>
-  <audio id="collectSound" src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_a8765f38cb.mp3?filename=collect-coin-4-19938.mp3"></audio>
-  <audio id="hitSound" src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_f13e7c9aa6.mp3?filename=negative_beeps-6008.mp3"></audio>
-  <script>
-    const canvas = document.getElementById("gameCanvas");
-    const ctx = canvas.getContext("2d");
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
 
-    let player = {
-      x: canvas.width / 2,
-      y: canvas.height - 60,
-      radius: 25,
-      color: "#ff5722"
-    };
+<!-- Pantalla Inicio -->
+<div id="pantallaInicio">
+  <h1>Selecciona tu Bola</h1>
+  <div id="seleccionBola">
+    <div class="opcionBola" data-color="bola8" data-poder="Bola 8 Poder" data-img="bola 8.png">
+      <img src="bola 8.png" alt="Bola 8" />
+      Bola 8<br /><small>Poder 8</small>
+    </div>
+    <div class="opcionBola" data-color="pacman" data-poder="Come Estrellas" data-img="pacman.png">
+      <img src="pacman.png" alt="Pacman" />
+      Pacman<br /><small>Come Estrellas</small>
+    </div>
+    <div class="opcionBola" data-color="fantasma" data-poder="Fantasma Invulnerable" data-img="fantasma.png">
+      <img src="fantasma.png" alt="Fantasma" />
+      Fantasma<br /><small>Invulnerable</small>
+    </div>
+  </div>
+  <button id="btnIniciar" disabled>Iniciar Juego</button>
+</div>
 
-    let obstacles = [];
-    let stars = [];
-    let score = 0;
-    let gameOver = false;
+<!-- Pantalla Juego -->
+<div id="pantallaJuego" style="position: relative;">
+  <canvas id="juegoCanvas" width="360" height="500"></canvas>
+  <div id="infoJuego">
+    Score: <span id="score">0</span> | Vidas: <span id="vidas">3</span> | Nivel: <span id="nivel">1</span>
+  </div>
+  <button id="btnReiniciarJuego">Regresar al Menú</button>
+</div>
 
-    const collectSound = document.getElementById("collectSound");
-    const hitSound = document.getElementById("hitSound");
+<!-- Pantalla Final -->
+<div id="pantallaFinal">
+  <h2>¡Juego Terminado!</h2>
+  <p>Tu puntuación fue: <span id="scoreFinal">0</span></p>
+  <button id="btnReiniciar">Volver a jugar</button>
+</div>
 
-    function drawPlayer() {
-      ctx.beginPath();
-      ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
-      ctx.fillStyle = player.color;
-      ctx.fill();
-      ctx.closePath();
-    }
+<!-- Sonidos -->
+<audio id="sonidoEstrella" src="comerEstrella.mp3"></audio>
+<audio id="sonidoSeleccion" src="escogerBola.mp3"></audio>
+<audio id="sonidoGameover" src="gameover.mp3"></audio>
+<audio id="sonidoVida" src="pierdeVida.mp3"></audio>
+<audio id="sonidoNivel" src="subirNivel.mp3"></audio>
 
-    function drawObstacle(ob) {
-      ctx.fillStyle = "#000";
-      ctx.fillRect(ob.x, ob.y, ob.width, ob.height);
-    }
+<script>
+  const pantallaInicio = document.getElementById('pantallaInicio');
+  const pantallaJuego = document.getElementById('pantallaJuego');
+  const pantallaFinal = document.getElementById('pantallaFinal');
+  const canvas = document.getElementById('juegoCanvas');
+  const ctx = canvas.getContext('2d');
+  const scoreSpan = document.getElementById('score');
+  const vidasSpan = document.getElementById('vidas');
+  const nivelSpan = document.getElementById('nivel');
+  const scoreFinalSpan = document.getElementById('scoreFinal');
+  const btnIniciar = document.getElementById('btnIniciar');
+  const btnReiniciar = document.getElementById('btnReiniciar');
+  const btnReiniciarJuego = document.getElementById('btnReiniciarJuego');
+  const opcionesBola = document.querySelectorAll('.opcionBola');
 
-    function drawStar(st) {
-      ctx.beginPath();
-      ctx.arc(st.x, st.y, st.radius, 0, Math.PI * 2);
-      ctx.fillStyle = "yellow";
-      ctx.fill();
-      ctx.closePath();
-    }
+  // Sonidos
+  const sonidoEstrella = document.getElementById('sonidoEstrella');
+  const sonidoSeleccion = document.getElementById('sonidoSeleccion');
+  const sonidoGameover = document.getElementById('sonidoGameover');
+  const sonidoVida = document.getElementById('sonidoVida');
+  const sonidoNivel = document.getElementById('sonidoNivel');
 
-    function spawnObstacle() {
-      let width = 60;
-      let height = 20;
-      let x = Math.random() * (canvas.width - width);
-      let y = -height;
-      obstacles.push({ x, y, width, height, speed: 3 });
-    }
+  // Cargar imágenes de las bolas para usar en canvas
+  const imagenesBolas = {
+    bola8: new Image(),
+    pacman: new Image(),
+    fantasma: new Image(),
+  };
+  imagenesBolas.bola8.src = "bola 8.png";
+  imagenesBolas.pacman.src = "pacman.png";
+  imagenesBolas.fantasma.src = "fantasma.png";
 
-    function spawnStar() {
-      let x = Math.random() * (canvas.width - 20) + 10;
-      let y = -20;
-      stars.push({ x, y, radius: 10, speed: 2 });
-    }
+  // Variables del juego
+  let bola = {
+    x: canvas.width / 2,
+    y: canvas.height - 50,
+    r: 20,
+    color: '',
+    velocidad: 6,
+    invulnerable: false,
+    rebotes: 0,
+    tipo: ''
+  };
+  let score = 0;
+  let vidas = 3;
+  let nivel = 1;
+  let estrellas = [];
+  let obstaculos = [];
+  let velocidadObstaculos = 2;
+  let gameOver = false;
 
-    function update() {
-      if (gameOver) return;
+  // Control movimiento
+  let moverIzq = false;
+  let moverDer = false;
 
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      drawPlayer();
+  // Bola seleccionada
+  let bolaSeleccionada = null;
 
-      obstacles.forEach((ob, i) => {
-        ob.y += ob.speed;
-        drawObstacle(ob);
+  // Colores para el fondo por nivel
+  const coloresFondo = ['#fef3c7', '#fde68a', '#fbbf24', '#f59e0b', '#d97706', '#b45309'];
 
-        if (
-          player.x + player.radius > ob.x &&
-          player.x - player.radius < ob.x + ob.width &&
-          player.y + player.radius > ob.y &&
-          player.y - player.radius < ob.y + ob.height
-        ) {
-          hitSound.play();
-          alert("¡Ups! Juego terminado. Puntos: " + score);
-          location.reload();
-          gameOver = true;
-        }
-      });
-
-      stars.forEach((st, i) => {
-        st.y += st.speed;
-        drawStar(st);
-
-        let dx = player.x - st.x;
-        let dy = player.y - st.y;
-        let distance = Math.sqrt(dx * dx + dy * dy);
-
-        if (distance < player.radius + st.radius) {
-          score++;
-          document.getElementById("score").innerText = "Puntos: " + score;
-          collectSound.play();
-          stars.splice(i, 1);
-        }
-      });
-
-      requestAnimationFrame(update);
-    }
-
-    setInterval(spawnObstacle, 1500);
-    setInterval(spawnStar, 2000);
-    update();
-
-    // Control táctil
-    canvas.addEventListener("touchmove", (e) => {
-      let touch = e.touches[0];
-      player.x = touch.clientX;
-      player.y = touch.clientY;
+  // Seleccionar bola
+  opcionesBola.forEach(opcion => {
+    opcion.addEventListener('click', () => {
+      opcionesBola.forEach(o => o.classList.remove('selected'));
+      opcion.classList.add('selected');
+      bolaSeleccionada = opcion.getAttribute('data-color');
+      btnIniciar.disabled = false;
+      sonidoSeleccion.currentTime = 0;
+      sonidoSeleccion.play();
     });
-  </script>
+  });
+
+  // Iniciar juego
+  btnIniciar.addEventListener('click', () => {
+    if (!bolaSeleccionada) return;
+    bola.color = bolaSeleccionada;
+    bola.tipo = bolaSeleccionada;
+    bola.invulnerable = (bola.color === 'fantasma') ? true : false;
+    bola.rebotes = 0;
+    pantallaInicio.style.display = 'none';
+    pantallaJuego.style.display = 'flex';
+    pantallaFinal.style.display = 'none';
+    iniciarJuego();
+  });
+
+  // Reiniciar juego desde pantalla final
+  btnReiniciar.addEventListener('click', () => {
+    pantallaFinal.style.display = 'none';
+    pantallaInicio.style.display = 'flex';
+    score = 0;
+    vidas = 3;
+    nivel = 1;
+    velocidadObstaculos = 2;
+    bola.x = canvas.width / 2;
+    bola.y = canvas.height - 50;
+    bola.invulnerable = false;
+    bola.rebotes = 0;
+    bolaSeleccionada = null;
+    opcionesBola.forEach(o => o.classList.remove('selected'));
+    btnIniciar.disabled = true;
+  });
+
+  // Botón para regresar al menú de selección
+  btnReiniciarJuego.addEventListener('click', () => {
+    pantallaJuego.style.display = 'none';
+    pantallaInicio.style.display = 'flex';
+    pantallaFinal.style.display = 'none';
+
+    // Resetear variables de juego
+    score = 0;
+    vidas = 3;
+    nivel = 1;
+    velocidadObstaculos = 2;
+    bola.x = canvas.width / 2;
+    bola.y = canvas.height - 50;
+    bola.invulnerable = false;
+    bola.rebotes = 0;
+
+    // Deseleccionar bola
+    bolaSeleccionada = null;
+    opcionesBola.forEach(o => o.classList.remove('selected'));
+    btnIniciar.disabled = true;
+  });
+
+  // Generar estrellas (caen)
+  function generarEstrellas() {
+    estrellas = [];
+    for(let i=0; i<5 + nivel; i++) {
+      estrellas.push({
+        x: Math.random() * (canvas.width - 40) + 20,
+        y: -Math.random() * 500,
+        r: 10,
+        velocidad: 1.5 + nivel * 0.3
+      });
+    }
+  }
+
+  // Generar obstáculos (caen)
+  function generarObstaculos() {
+    obstaculos = [];
+    for(let i=0; i<nivel + 1; i++) {
+      obstaculos.push({
+        x: Math.random() * (canvas.width - 30),
+        y: -Math.random() * 700,
+        w: 30,
+        h: 20,
+        velocidad: velocidadObstaculos + nivel * 0.5
+      });
+    }
+  }
+
+  // Dibujar bola con imagen
+  function dibujarBola() {
+    let img = imagenesBolas[bola.tipo];
+    if(img && img.complete) {
+      ctx.drawImage(img, bola.x - bola.r, bola.y - bola.r, bola.r * 2, bola.r * 2);
+    } else {
+      // fallback: círculo si no carga imagen
+      ctx.beginPath();
+      ctx.fillStyle = bola.color || 'gray';
+      ctx.arc(bola.x, bola.y, bola.r, 0, Math.PI*2);
+      ctx.fill();
+      ctx.closePath();
+    }
+  }
+
+  // Dibujar estrellas y moverlas
+  function dibujarEstrellas() {
+    estrellas.forEach((e, i) => {
+      e.y += e.velocidad;
+      if (e.y > canvas.height + e.r) {
+        e.y = -Math.random() * 200;
+        e.x = Math.random() * (canvas.width - 40) + 20;
+      }
+      ctx.beginPath();
+      ctx.fillStyle = 'yellow';
+      ctx.arc(e.x, e.y, e.r, 0, Math.PI*2);
+      ctx.fill();
+      ctx.closePath();
+
+      // Colisión con bola
+      const dx = bola.x - e.x;
+      const dy = bola.y - e.y;
+      const dist = Math.sqrt(dx*dx + dy*dy);
+      if(dist < bola.r + e.r) {
+        score++;
+        sonidoEstrella.currentTime = 0;
+        sonidoEstrella.play();
+        estrellas.splice(i, 1);
+      }
+    });
+  }
+
+  // Dibujar obstáculos y moverlos
+  function dibujarObstaculos() {
+    obstaculos.forEach((ob, i) => {
+      ob.y += ob.velocidad;
+      if (ob.y > canvas.height + ob.h) {
+        ob.y = -Math.random() * 300;
+        ob.x = Math.random() * (canvas.width - ob.w);
+      }
+      ctx.fillStyle = 'black';
+      ctx.fillRect(ob.x, ob.y, ob.w, ob.h);
+
+      // Colisión con bola
+      const dx = bola.x - (ob.x + ob.w/2);
+      const dy = bola.y - (ob.y + ob.h/2);
+      const dist = Math.sqrt(dx*dx + dy*dy);
+      if(dist < bola.r + Math.max(ob.w, ob.h)/2) {
+        if(bola.invulnerable) {
+          bola.invulnerable = false;
+          bola.rebotes++;
+          sonidoVida.currentTime = 0;
+          sonidoVida.play();
+          bola.y -= 50; // rebote visual
+        } else {
+          vidas--;
+          sonidoVida.currentTime = 0;
+          sonidoVida.play();
+          // Resetear obstáculo
+          ob.y = -Math.random() * 300;
+          ob.x = Math.random() * (canvas.width - ob.w);
+          if(vidas <= 0) gameOver = true;
+        }
+      }
+    });
+  }
+
+  // Actualizar info en pantalla
+  function actualizarInfo() {
+    scoreSpan.textContent = score;
+    vidasSpan.textContent = vidas;
+    nivelSpan.textContent = nivel;
+  }
+
+  // Control teclado
+  window.addEventListener('keydown', e => {
+    if(e.key === 'ArrowLeft') moverIzq = true;
+    else if(e.key === 'ArrowRight') moverDer = true;
+  });
+  window.addEventListener('keyup', e => {
+    if(e.key === 'ArrowLeft') moverIzq = false;
+    else if(e.key === 'ArrowRight') moverDer = false;
+  });
+
+  // Control táctil y mouse para mover bola horizontalmente
+  canvas.addEventListener('touchmove', e => {
+    const touch = e.touches[0];
+    const rect = canvas.getBoundingClientRect();
+    bola.x = touch.clientX - rect.left;
+    if(bola.x < bola.r) bola.x = bola.r;
+    if(bola.x > canvas.width - bola.r) bola.x = canvas.width - bola.r;
+    e.preventDefault();
+  }, { passive: false });
+
+  canvas.addEventListener('mousemove', e => {
+    const rect = canvas.getBoundingClientRect();
+    bola.x = e.clientX - rect.left;
+    if(bola.x < bola.r) bola.x = bola.r;
+    if(bola.x > canvas.width - bola.r) bola.x = canvas.width - bola.r;
+  });
+
+  // Cambiar color fondo por nivel
+  function cambiarFondoPorNivel() {
+    const color = coloresFondo[(nivel - 1) % coloresFondo.length];
+    canvas.style.backgroundColor = color;
+  }
+
+  // Loop principal
+  function loop() {
+    if(gameOver) {
+      pantallaJuego.style.display = 'none';
+      pantallaFinal.style.display = 'flex';
+      scoreFinalSpan.textContent = score;
+      sonidoGameover.play();
+      return;
+    }
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Mover bola con flechas
+    if(moverIzq) bola.x -= bola.velocidad;
+    if(moverDer) bola.x += bola.velocidad;
+    if(bola.x < bola.r) bola.x = bola.r;
+    if(bola.x > canvas.width - bola.r) bola.x = canvas.width - bola.r;
+
+    dibujarBola();
+    dibujarEstrellas();
+    dibujarObstaculos();
+
+    if(estrellas.length === 0) {
+      nivel++;
+      sonidoNivel.currentTime = 0;
+      sonidoNivel.play();
+      generarEstrellas();
+      generarObstaculos();
+      velocidadObstaculos += 0.5;
+      cambiarFondoPorNivel();
+    }
+
+    actualizarInfo();
+    requestAnimationFrame(loop);
+  }
+
+  // Función iniciar juego
+  function iniciarJuego() {
+    score = 0;
+    vidas = 3;
+    nivel = 1;
+    velocidadObstaculos = 2;
+    bola.x = canvas.width / 2;
+    bola.y = canvas.height - 50;
+    bola.velocidad = 6;
+    bola.invulnerable = (bola.color === 'fantasma') ? true : false;
+    bola.rebotes = 0;
+    gameOver = false;
+    generarEstrellas();
+    generarObstaculos();
+    cambiarFondoPorNivel();
+    actualizarInfo();
+    loop();
+  }
+</script>
+
 </body>
 </html>
